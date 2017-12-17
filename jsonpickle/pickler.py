@@ -11,6 +11,7 @@ import base64
 import warnings
 import sys
 from itertools import chain, islice
+from collections import OrderedDict
 
 from . import util
 from . import tags
@@ -29,7 +30,9 @@ def encode(value,
            warn=False,
            context=None,
            max_iter=None,
-           numeric_keys=False):
+           numeric_keys=False,
+           ordered=False,
+           ignore_none=False):
     backend = _make_backend(backend)
     if context is None:
         context = Pickler(unpicklable=unpicklable,
@@ -39,7 +42,9 @@ def encode(value,
                           max_depth=max_depth,
                           warn=warn,
                           max_iter=max_iter,
-                          numeric_keys=numeric_keys)
+                          numeric_keys=numeric_keys,
+                          ordered=ordered,
+                          ignore_none=ignore_none)
     return backend.encode(context.flatten(value, reset=reset))
 
 
@@ -60,7 +65,9 @@ class Pickler(object):
                  keys=False,
                  warn=False,
                  max_iter=None,
-                 numeric_keys=False):
+                 numeric_keys=False,
+                 ordered=False,
+                 ignore_none=False):
         self.unpicklable = unpicklable
         self.make_refs = make_refs
         self.backend = _make_backend(backend)
@@ -77,6 +84,10 @@ class Pickler(object):
         self._seen = []
         # maximum amount of items to take from a pickled iterator
         self._max_iter = max_iter
+        # Keep object decleration order
+        self.ordered = ordered
+        # Ignore None attributes
+        self.ignore_none = ignore_none
 
     def reset(self):
         self._objs = {}
@@ -255,7 +266,10 @@ class Pickler(object):
     def _flatten_obj_instance(self, obj):
         """Recursively flatten an instance and return a json-friendly dict
         """
-        data = {}
+        if self.ordered is True:
+            data = OrderedDict()
+        else:
+            data = {}
         has_class = hasattr(obj, '__class__')
         has_dict = hasattr(obj, '__dict__')
         has_slots = not has_dict and hasattr(obj, '__slots__')
@@ -429,8 +443,13 @@ class Pickler(object):
             data = obj.__class__()
 
         flatten = self._flatten_key_value_pair
-        for k, v in sorted(obj.items(), key=util.itemgetter):
-            flatten(k, v, data)
+
+        if self.ordered is True:
+            for k, v in obj.items():
+                flatten(k, v, data)
+        else:
+            for k, v in sorted(obj.items(), key=util.itemgetter):
+                flatten(k, v, data)
 
         # the collections.defaultdict protocol
         if hasattr(obj, 'default_factory') and callable(obj.default_factory):
@@ -490,7 +509,8 @@ class Pickler(object):
         else:
             if k is None:
                 k = 'null'  # for compatibility with common json encoders
-
+            if v is None and self.ignore_none is True:
+                return data # ignore this key
             if self.numeric_keys and isinstance(k, numeric_types):
                 pass
             elif not isinstance(k, (str, unicode)):

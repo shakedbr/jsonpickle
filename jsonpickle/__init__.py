@@ -85,7 +85,9 @@ def encode(value,
            backend=None,
            warn=False,
            max_iter=None,
-           numeric_keys=False):
+           numeric_keys=False,
+           ordered=False,
+           ignore_none=False):
     """Return a JSON formatted representation of value, a Python object.
 
     :param unpicklable: If set to False then the output will not contain the
@@ -107,6 +109,9 @@ def encode(value,
         (e.g. file descriptors).
     :param max_iter: If set to a non-negative integer then jsonpickle will
         consume at most `max_iter` items when pickling iterators.
+    :param ordered: If set to True, the return value will be OrderedDict with object attribute
+        order
+    :param ignore_none: If set to True, None attributes will be ignored
 
     >>> encode('my string') == '"my string"'
     True
@@ -129,7 +134,9 @@ def encode(value,
                           max_depth=max_depth,
                           warn=warn,
                           max_iter=max_iter,
-                          numeric_keys=numeric_keys)
+                          numeric_keys=numeric_keys,
+                          ordered=ordered,
+                          ignore_none=ignore_none)
 
 
 def decode(string, backend=None, keys=False):

@@ -391,6 +391,26 @@ class JSONPickleTestCase(SkippableTest):
             % tags.OBJECT
         )
 
+    def test_encode_order_unpicklable(self):
+        expect = '{"name": "A name", "child": null}'
+        json = jsonpickle.encode(self.obj, ordered=True, unpicklable=False)
+        self.assertEqual(json, expect)
+
+    def test_encode_order_and_ignore_unpicklable(self):
+        expect = '{"name": "A name"}'
+        json = jsonpickle.encode(self.obj, ordered=True, ignore_none=True, unpicklable=False)
+        self.assertEqual(json, expect)
+
+    def test_encode_order_and_ignore_subclass_unpicklable(self):
+        class FirstClass(object):
+            def __init__(self):
+                self.thing = Thing("subclass")
+                self.a = 5
+        f = FirstClass()
+        expect = '{"thing": {"name": "subclass"}, "a": 5}'
+        json = jsonpickle.encode(f, ordered=True, ignore_none=True, unpicklable=False)
+        self.assertEqual(json, expect)
+
     def test_encode(self):
         expect = self.obj
         pickle = jsonpickle.encode(self.obj)
